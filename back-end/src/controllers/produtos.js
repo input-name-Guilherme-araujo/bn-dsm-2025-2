@@ -4,37 +4,33 @@ import { includeRelations } from '../lib/utils.js'
 const controller = {}   // Objeto vazio
 
 controller.create = async function(req, res) {
-  /*
-    Conecta-se ao banco de dados e envia uma instrução
-    de criação de um novo documento, contendo os dados
-    que chegaram dentro da seção "body" da requisição
-    ("req")
-  */
   try {
-    await prisma.categoria.create({ data: req.body })
+    // Cria o produto
+    const novoProduto = await prisma.produto.create({ 
+      data: req.body,
+      include: {
+        categoria: true,
+        fornecedores: true
+      }
+    })
 
-    // Envia um código de sucesso ao front-end
-    // HTTP 201: Created
-    res.status(201).end()
+    res.status(201).send(novoProduto)
   }
   catch(error) {
-    // Algo deu errado: exibe o erro no terminal
     console.error(error)
-
-    // Envia o erro ao front-end, com código de erro
-    // HTTP 500: Internal Server Error
     res.status(500).send(error)
   }
 }
 
 controller.retrieveAll = async function(req, res) {
   try {
+
     const include = includeRelations(req.query)
-    
-    // Manda buscar todas as categorias cadastradas no BD
-    const result = await prisma.categoria.findMany({
+
+    // Manda buscar todas os produtos cadastradas no BD
+    const result = await prisma.produto.findMany({
       include,
-      orderBy: [ { descricao: 'asc' }]  // Ordem ASCendente
+      orderBy: [ { nome: 'asc' }]  // Ordem ASCendente
     })
 
     // Retorna os dados obtidos ao cliente com o status
@@ -51,14 +47,16 @@ controller.retrieveAll = async function(req, res) {
   }
 }
 
+
 controller.retrieveOne = async function(req, res) {
   try {
+
     const include = includeRelations(req.query)
 
     // Manda recuperar o documento no servidor de BD
     // usando como critério um id informado no parâmetro
     // da requisição
-    const result = await prisma.categoria.findUnique({
+    const result = await prisma.produto.findUnique({
       include,
       where: { id: req.params.id }
     })
@@ -78,30 +76,27 @@ controller.retrieveOne = async function(req, res) {
   }
 }
 
+
 controller.update = async function(req, res) {
   try {
-    // Busca o documento passado como parâmetro e, caso o documento seja
-    // encontrado, atualiza-o com as informações contidas em req.body
-    await prisma.categoria.update({
+    // Atualiza o produto
+    const updatedProduto = await prisma.produto.update({
       where: { id: req.params.id },
-      data: req.body
+      data: req.body,
+      include: {
+        categoria: true,
+        fornecedores: true
+      }
     })
 
-    // Encontrou e atualizou ~> retorna HTTP 204: No Content
-    res.status(204).end()
+    res.status(200).send(updatedProduto)
   }
   catch(error) {
-    // Algo deu errado: exibe o erro no terminal
-    console.error(error)
-
-    // P2025: erro do Prisma referente a objeto não encontrado
     if(error?.code === 'P2025') {
-      // Não encontrou e não atualizou ~> retorna HTTP 404: Not Found
       res.status(404).end()
     }
-    else {    // Outros tipos de erro
-      // Envia o erro ao front-end, com código de erro
-      // HTTP 500: Internal Server Error
+    else {
+      console.error(error)
       res.status(500).send(error)
     }
   }
@@ -109,9 +104,9 @@ controller.update = async function(req, res) {
 
 controller.delete = async function(req, res) {
   try {
-    // Busca o documento pelo id passado como parâmetro
-    // e efetua a exclusão, caso o documento seja encontrado
-    await prisma.categoria.delete({
+    // Busca o documento a ser excluído pelo id passado
+    // como parâmetro e efetua a exclusão, caso encontrado
+    await prisma.produto.delete({
       where: { id: req.params.id }
     })
 
@@ -119,16 +114,16 @@ controller.delete = async function(req, res) {
     res.status(204).end()
   }
   catch(error) {
-    // Algo deu errado: exibe o erro no terminal
-    console.error(error)
-
     // P2025: erro do Prisma referente a objeto não encontrado
     if(error?.code === 'P2025') {
       // Não encontrou e não excluiu ~> retorna HTTP 404: Not Found
       res.status(404).end()
     }
     else {    // Outros tipos de erro
-      // Envia o erro ao front-end, com código de erro
+      // Deu errado: exibe o erro no terminal
+      console.error(error)
+
+      // Envia o erro ao front-end, com status de erro
       // HTTP 500: Internal Server Error
       res.status(500).send(error)
     }
